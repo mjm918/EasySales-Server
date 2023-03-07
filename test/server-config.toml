@@ -1,0 +1,21 @@
+[ports]
+tcp = 8089
+http = 9098
+tls_tcp = 8088
+tls_http = 9099
+
+
+[certs]
+crt = "/Users/julfikar/Documents/Personal.nosync/EasySales-SSS/test/cert.pem"
+key = "/Users/julfikar/Documents/Personal.nosync/EasySales-SSS/test/key.pem"
+ca = ""
+
+[log]
+app = "/Users/julfikar/Documents/Personal.nosync/EasySales-SSS/target/debug/logs/app.log"
+http = "/Users/julfikar/Documents/Personal.nosync/EasySales-SSS/target/debug/logs/http.log"
+tcp = "/Users/julfikar/Documents/Personal.nosync/EasySales-SSS/target/debug/logs/tcp.log"
+moedb = "/Users/julfikar/Documents/Personal.nosync/EasySales-SSS/target/debug/logs/modb.log"
+
+[moedb]
+path = "/Users/julfikar/Documents/Personal.nosync/EasySales-SSS/test/"
+ops_log = "/Users/julfikar/Documents/Personal.nosync/EasySales-SSS/test/moedb"
