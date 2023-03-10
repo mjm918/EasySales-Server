@@ -3,6 +3,7 @@ pub mod toml_schema;
 pub mod util;
 pub mod tls;
 
+pub const DB_SOCKET_PATH:&str = "./moedb.sock";
 pub const DB_PATH:&str = "./moedb";
 pub const SYS_CFG:&str = "./server-config.toml";
 pub const LOG_DIR_APP:&str = "./logs";

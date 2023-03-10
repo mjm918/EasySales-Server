@@ -1,0 +1,10 @@
+[workspace]
+
+members = [
+    "cli",
+    "http",
+    "shared",
+    "tcp",
+    "moedb",
+    "socket-test"
+]

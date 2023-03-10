@@ -20,7 +20,7 @@ pub fn is_schema_properties_ok(value: &Value) -> Result<(),SchemaError> {
             }
         }
     } else if value.is_string() && !is_data_type_ok(value.as_str().unwrap()) {
-        return return Err(SchemaError::TypeDeclarationWrong(value.to_string()));
+        return Err(SchemaError::TypeDeclarationWrong(value.to_string()));
     }
     if value.is_object() || value.is_string() {
         return Ok(());
@@ -29,7 +29,7 @@ pub fn is_schema_properties_ok(value: &Value) -> Result<(),SchemaError> {
 }
 
 pub fn is_schema_pv_ok(name: &str) -> Result<(),SchemaError> {
-    let regx = Regex::new(r"[^a-zA-Z0-9]").unwrap();
+    let regx = Regex::new(r"[^a-zA-Z0-9_-]").unwrap();
     if name.to_string().trim().is_empty() {
         return Err(SchemaError::InvalidPropNaming { expected: "a-Z".to_string(), found: "".to_string() });
     }
@@ -74,8 +74,7 @@ fn schema_check(schema: &Value) -> Result<(),SchemaError> {
     } else {
         return Err(SchemaError::MalformedSchema);
     }
-    let is_prop_count_ok = prop_count == 3;
-    if !is_prop_count_ok {
+    if prop_count != 3 {
         return Err(SchemaError::MalformedSchema);
     }
     Ok(())
@@ -117,6 +116,10 @@ fn prop_value_check(prop:&String, value:&Value) -> Result<(),SchemaError> {
             }
             let properties = value.as_object().unwrap();
             for dt in properties {
+                let col = is_schema_pv_ok(dt.0);
+                if col.is_err() {
+                    return Err(col.err().unwrap());
+                }
                 let res = is_schema_properties_ok(dt.1);
                 if res.is_err() {
                     return Err(res.err().unwrap());
@@ -130,9 +133,11 @@ fn prop_value_check(prop:&String, value:&Value) -> Result<(),SchemaError> {
 
 #[cfg(test)]
 mod tests {
+    use std::time::Instant;
     use super::*;
     #[test]
     fn run_schema_ok(){
+        let perf = Instant::now();
         let schema = r#"
             {
                 "name":"Person",
@@ -158,5 +163,6 @@ mod tests {
         assert_eq!(is_schema_ok(schema).unwrap(),());
         assert_eq!(is_schema_ok(schema).is_err(),false);
         assert_eq!(is_schema_ok("hello").is_err(),true);
+        println!("{}",format!("run_schema_ok:: {:?}",perf.elapsed()));
     }
 }

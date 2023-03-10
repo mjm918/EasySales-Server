@@ -44,7 +44,10 @@ pub struct CertConfig {
 #[derive(Debug, Deserialize, Clone)]
 pub struct MoeDb {
     pub path: String,
-    pub ops_log: String
+    pub ops_log: String,
+    pub strict_mode: bool,
+    pub date_format: String,
+    pub default_auth: Vec<String>
 }
 
 pub fn read_sys_cfg() -> Result<BaseConfig,Error> {

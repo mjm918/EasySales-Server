@@ -6,7 +6,7 @@ pub enum SchemaError {
     InvalidSchema(String),
     #[error("malformed schema")]
     MalformedSchema,
-    #[error("invalid naming (expected {expected:?}, got {found:?})")]
+    #[error("invalid naming (expected {expected:?}, outcome {found:?})")]
     InvalidPropNaming {
         expected: String,
         found: String,
@@ -17,4 +17,12 @@ pub enum SchemaError {
     MalformedPropertyDeclaration,
     #[error("unknown object `{0}`")]
     UnknownObject(String)
+}
+
+#[derive(Error, Debug)]
+pub enum StatementError {
+    #[error("invalid statement provided `{0}`")]
+    InvalidStatement(String),
+    #[error("unknown command `{0}`")]
+    UnknownCommand(String),
 }

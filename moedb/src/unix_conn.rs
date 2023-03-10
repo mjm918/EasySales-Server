@@ -1,19 +1,13 @@
-use std::io;
 use std::io::{Read, Write};
-use std::net;
 use std::net::Shutdown;
-
-use log::{debug, error, info, warn};
+use log::error;
+use mio::net::UnixStream;
 use mio::{Interest, Registry, Token};
 use mio::event::Event;
-use mio::net::TcpStream;
+use crate::header::UnixConn;
 
-use shared::validator::try_read;
-
-use crate::header::{InsecureTcpConnection};
-
-impl InsecureTcpConnection {
-    pub fn new(socket: TcpStream, token: Token) -> Self {
+impl UnixConn {
+    pub fn new(socket: UnixStream, token: Token) -> Self {
         Self {
             socket,
             token,
@@ -27,12 +21,11 @@ impl InsecureTcpConnection {
     pub fn ready(&mut self, registry: &Registry, ev: &Event) {
         if ev.is_readable() {
             let mut buffer = vec![0u8;256*1024*1024];
-            let nbytes = self.socket.read(&mut buffer).expect("failed to read");
+            let nbytes = self.socket.read(&mut buffer).expect("failed to read stream");
             if nbytes == 0 {
                 self.unregister(registry);
             } else {
                 self.message = String::from_utf8_lossy(&buffer[..nbytes]).to_string();
-                debug!("received {} from {}",self.message,self.socket.peer_addr().unwrap());
             }
         }
         if ev.is_writable() {
@@ -43,7 +36,7 @@ impl InsecureTcpConnection {
         }
 
         if self.closing {
-            self.socket.shutdown(Shutdown::Both).expect("failed to shutdown socket");
+            self.socket.shutdown(Shutdown::Both).expect(format!("failed to shutdown {:?}",self.socket.peer_addr()).as_str());
             self.closed = true;
             self.unregister(registry);
         } else {
@@ -63,7 +56,7 @@ impl InsecureTcpConnection {
         if task.is_ok() {
             task.unwrap();
         } else {
-            warn!("{}. socket dropped",task.err().unwrap());
+            error!("{}. socket dropped",task.err().unwrap());
         }
     }
 
@@ -73,7 +66,7 @@ impl InsecureTcpConnection {
         if task.is_ok() {
             task.unwrap();
         } else {
-            warn!("{}. socket dropped",task.err().unwrap());
+            error!("{}. socket dropped",task.err().unwrap());
         }
     }
 

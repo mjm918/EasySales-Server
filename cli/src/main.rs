@@ -1,11 +1,16 @@
 use std::env;
 use std::fs::File;
+use std::io::{Read, Write};
+use std::path::Path;
 use anyhow::{Result, anyhow, Error};
 use shared::{EASYSALES_ART,CLI_INSTRUCTION,validator,util};
 use simplelog::*;
 use log::{error, LevelFilter};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::UnixStream;
 
-fn main() -> Result<(), Error> {
+#[tokio::main]
+async fn main() -> Result<(), Error> {
     println!("{}",EASYSALES_ART);
     let args: Vec<String> = env::args().skip(1).collect();
     if args.len() == 0 {
@@ -28,6 +33,17 @@ fn main() -> Result<(), Error> {
             }
             "--status-http" =>{
 
+            }
+            "--connect-moedb"=>{
+                let socket_path = Path::new("/Users/julfikar/Documents/Personal.nosync/EasySales-Server/target/debug/moedb.sock");
+                let mut stream = UnixStream::connect(socket_path).await.unwrap();
+
+                let message = "Hello, Unix domain socket!".as_bytes();
+                stream.write_all(message).await.unwrap();
+
+                let mut response = [0; 1024];
+                let n = stream.read(&mut response).await.unwrap();
+                println!("Received {} bytes: {:?}", n, String::from_utf8_lossy(&response[..n]));
             }
             _ => {
 

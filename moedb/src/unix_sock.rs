@@ -1,53 +1,39 @@
-use std::io;
-use std::net::{AddrParseError, SocketAddr};
+use std::path::Path;
 use std::sync::Arc;
-
 use anyhow::{Error, Result};
-use async_trait::async_trait;
-use dashmap::DashMap as HashMap;
-use log::{debug, info, warn};
+use dashmap::DashMap;
+use futures::TryFutureExt;
+use log::{debug, error};
+use mio::net::UnixListener;
 use mio::{Events, Interest, Poll, Registry, Token};
 use mio::event::Event;
-use mio::net::TcpListener;
-use rayon::prelude::*;
-use shared::toml_schema::CertConfig;
-
-use crate::header::{InsecureTcpConnection, InsecureTcpServer, InternalTcpServer};
-use crate::common::use_default_tcp_server;
+use crate::header::{UnixConn, UnixSock};
 
 const LISTENER: Token = Token(0);
-#[async_trait]
-impl InternalTcpServer<InsecureTcpServer> for InsecureTcpServer {
-    async fn new(address: String, _cfg: Option<Arc<CertConfig>>) -> Result<InsecureTcpServer, Error> {
-        let socket_address = address.parse()?;
-        let tcp_listener = TcpListener::bind(socket_address);
-        if tcp_listener.is_err() {
-            return Err(Error::new(tcp_listener.err().unwrap()));
-        }
-        Ok(Self{
-            listener: tcp_listener.unwrap(),
-            connections: HashMap::new(),
+impl UnixSock {
+    pub async fn new(path: &str) -> Result<Self> {
+        let socket_path = Path::new(path);
+        let listener = UnixListener::bind(socket_path).expect("failed to bind unix server");
+        Ok(Self {
+            connections: DashMap::new(),
             next_id: 2,
-            socket_address
+            listener
         })
     }
 
-    fn start(&mut self) {
-        debug!("tcp server is starting");
+    pub fn start(&mut self) {
+        debug!("unix socket starting for moedb");
 
         self.connections.clear();
-
-        let server_builder = use_default_tcp_server(&mut self.listener, LISTENER);
-        let mut poll = server_builder.1;
-        let mut events = server_builder.0;
-
-        info!("tcp server started listening {}",self.socket_address.port());
+        let mut poll = Poll::new().unwrap();
+        let mut events = Events::with_capacity(512);
+        poll.registry().register(&mut self.listener, LISTENER, Interest::READABLE).unwrap();
 
         loop {
             poll.poll(&mut events, None).unwrap();
             for event in events.iter() {
                 match event.token() {
-                    LISTENER =>{
+                    LISTENER => {
                         self.accept_connection(poll.registry()).expect("failed to accept connection");
                     },
                     _ => self.connect_event(poll.registry(), event)
@@ -78,12 +64,12 @@ impl InternalTcpServer<InsecureTcpServer> for InsecureTcpServer {
                     let token = Token(self.next_id);
                     self.next_id += 1;
 
-                    let mut connection = InsecureTcpConnection::new(socket, token);
+                    let mut connection = UnixConn::new(socket, token);
                     connection.register(registry);
                     self.connections
                         .insert(token, connection);
                 }
-                Err(ref err) if err.kind() == io::ErrorKind::WouldBlock => return Ok(()),
+                Err(ref err) if err.kind() == std::io::ErrorKind::WouldBlock => return Ok(()),
                 Err(err) => {
                     debug!(
                         "encountered error while accepting connection; err={:?}",
@@ -93,5 +79,33 @@ impl InternalTcpServer<InsecureTcpServer> for InsecureTcpServer {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::net::UnixStream;
+    use super::*;
+    #[tokio::test]
+    async fn test_client() -> Result<(), Box<dyn std::error::Error>> {
+        tokio::spawn(async move {
+            let mut unix_sock = UnixSock::new(shared::DB_SOCKET_PATH);
+            unix_sock.await.unwrap().start();
+        });
+        tokio::spawn(async move {
+            let socket_path = Path::new(shared::DB_SOCKET_PATH);
+            let mut stream = UnixStream::connect(socket_path).await.unwrap();
+
+            let message = "Hello, Unix domain socket!".as_bytes();
+            stream.write_all(message).await.unwrap();
+
+            let mut response = [0; 1024];
+            let n = stream.read(&mut response).await.unwrap();
+            println!("Received {} bytes: {:?}", n, &response[..n]);
+        });
+
+        assert_eq!(1,1);
+        Ok(())
     }
 }
