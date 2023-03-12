@@ -1,4 +1,4 @@
-use anyhow::{Error, Result, anyhow};
+use anyhow::{Error, Result};
 use std::{fs,thread};
 use crate::SYS_CFG;
 

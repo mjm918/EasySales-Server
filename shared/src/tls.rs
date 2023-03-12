@@ -2,9 +2,7 @@ use std::fs;
 use std::io::{BufReader, Read};
 use std::sync::Arc;
 
-use rustls::RootCertStore;
-use rustls::server::{AllowAnyAnonymousOrAuthenticatedClient, AllowAnyAuthenticatedClient, NoClientAuth};
-use serde_derive::Deserialize;
+use rustls::server::{NoClientAuth};
 use crate::toml_schema::CertConfig;
 
 pub fn load_certs(filename: &str) -> Vec<rustls::Certificate> {

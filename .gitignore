@@ -2,3 +2,5 @@
 /logs
 /logs/**
 /moedb/server-config.toml
+/test/
+/test/**

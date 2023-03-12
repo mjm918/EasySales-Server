@@ -2,22 +2,22 @@ use std::path::Path;
 use std::sync::Arc;
 use anyhow::{Error, Result};
 use dashmap::DashMap;
-use futures::TryFutureExt;
-use log::{debug, error};
+use log::{debug};
 use mio::net::UnixListener;
 use mio::{Events, Interest, Poll, Registry, Token};
 use mio::event::Event;
-use crate::header::{UnixConn, UnixSock};
+use crate::header::{Command, UnixConn, UnixSock};
 
 const LISTENER: Token = Token(0);
 impl UnixSock {
-    pub async fn new(path: &str) -> Result<Self> {
+    pub async fn new(path: &str, command: Command) -> Result<Self> {
         let socket_path = Path::new(path);
         let listener = UnixListener::bind(socket_path).expect("failed to bind unix server");
         Ok(Self {
             connections: DashMap::new(),
             next_id: 2,
-            listener
+            listener,
+            command: Arc::new(command)
         })
     }
 
@@ -64,7 +64,7 @@ impl UnixSock {
                     let token = Token(self.next_id);
                     self.next_id += 1;
 
-                    let mut connection = UnixConn::new(socket, token);
+                    let mut connection = UnixConn::new(socket, token, self.command.clone());
                     connection.register(registry);
                     self.connections
                         .insert(token, connection);
@@ -79,33 +79,5 @@ impl UnixSock {
                 }
             }
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use tokio::io::{AsyncReadExt, AsyncWriteExt};
-    use tokio::net::UnixStream;
-    use super::*;
-    #[tokio::test]
-    async fn test_client() -> Result<(), Box<dyn std::error::Error>> {
-        tokio::spawn(async move {
-            let mut unix_sock = UnixSock::new(shared::DB_SOCKET_PATH);
-            unix_sock.await.unwrap().start();
-        });
-        tokio::spawn(async move {
-            let socket_path = Path::new(shared::DB_SOCKET_PATH);
-            let mut stream = UnixStream::connect(socket_path).await.unwrap();
-
-            let message = "Hello, Unix domain socket!".as_bytes();
-            stream.write_all(message).await.unwrap();
-
-            let mut response = [0; 1024];
-            let n = stream.read(&mut response).await.unwrap();
-            println!("Received {} bytes: {:?}", n, &response[..n]);
-        });
-
-        assert_eq!(1,1);
-        Ok(())
     }
 }

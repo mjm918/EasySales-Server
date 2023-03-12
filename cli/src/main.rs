@@ -38,8 +38,7 @@ async fn main() -> Result<(), Error> {
                 let socket_path = Path::new("/Users/julfikar/Documents/Personal.nosync/EasySales-Server/target/debug/moedb.sock");
                 let mut stream = UnixStream::connect(socket_path).await.unwrap();
 
-                let message = "Hello, Unix domain socket!".as_bytes();
-                stream.write_all(message).await.unwrap();
+                stream.write_all("SHOW :*".as_bytes()).await.unwrap();
 
                 let mut response = [0; 1024];
                 let n = stream.read(&mut response).await.unwrap();

@@ -4,7 +4,19 @@ use regex::Regex;
 use crate::common::get_cfs;
 use crate::uerr::SchemaError;
 
-pub fn is_schema_properties_ok(value: &Value) -> Result<(),SchemaError> {
+pub fn is_schema_ok(schema: &str) -> Result<(), SchemaError> {
+    let json_schema = serde_json::from_str(schema);
+    if json_schema.is_err() {
+        return Err(SchemaError::InvalidSchema(schema.to_string()));
+    }
+    let fields_ok = schema_check(&json_schema.unwrap());
+    if fields_ok.is_err() {
+        return Err(fields_ok.err().unwrap());
+    }
+    Ok(())
+}
+
+fn is_schema_properties_ok(value: &Value) -> Result<(),SchemaError> {
     if value.is_object() {
         let cfs = get_cfs();
         for ddt in value.as_object().unwrap() {
@@ -28,7 +40,7 @@ pub fn is_schema_properties_ok(value: &Value) -> Result<(),SchemaError> {
     Err(SchemaError::TypeDeclarationWrong(value.to_string()))
 }
 
-pub fn is_schema_pv_ok(name: &str) -> Result<(),SchemaError> {
+fn is_schema_pv_ok(name: &str) -> Result<(),SchemaError> {
     let regx = Regex::new(r"[^a-zA-Z0-9_-]").unwrap();
     if name.to_string().trim().is_empty() {
         return Err(SchemaError::InvalidPropNaming { expected: "a-Z".to_string(), found: "".to_string() });
@@ -46,18 +58,6 @@ pub fn is_schema_pv_ok(name: &str) -> Result<(),SchemaError> {
     Ok(())
 }
 
-pub fn is_schema_ok(schema: &str) -> Result<(), SchemaError> {
-    let json_schema = serde_json::from_str(schema);
-    if json_schema.is_err() {
-        return Err(SchemaError::InvalidSchema(schema.to_string()));
-    }
-    let fields_ok = schema_check(&json_schema.unwrap());
-    if fields_ok.is_err() {
-        return Err(fields_ok.err().unwrap());
-    }
-    Ok(())
-}
-
 fn schema_check(schema: &Value) -> Result<(),SchemaError> {
     let mut prop_count = 0;
     if schema.is_object() {
@@ -65,6 +65,9 @@ fn schema_check(schema: &Value) -> Result<(),SchemaError> {
         for key in props{
             if has_field(key.0.as_str()) {
                 prop_count += 1;
+
+                // TODO: check if object store exists.
+
                 let pv_check = prop_value_check(key.0,key.1);
                 if pv_check.is_err() {
                     return Err(pv_check.err().unwrap());

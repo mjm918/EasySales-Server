@@ -1,13 +1,14 @@
 use std::io::{Read, Write};
 use std::net::Shutdown;
-use log::error;
+use std::sync::Arc;
+use log::{warn};
 use mio::net::UnixStream;
 use mio::{Interest, Registry, Token};
 use mio::event::Event;
-use crate::header::UnixConn;
+use crate::header::{Command, UnixConn};
 
 impl UnixConn {
-    pub fn new(socket: UnixStream, token: Token) -> Self {
+    pub fn new(socket: UnixStream, token: Token, command: Arc<Command>) -> Self {
         Self {
             socket,
             token,
@@ -15,6 +16,7 @@ impl UnixConn {
             closing: false,
             closed: false,
             message: "".to_string(),
+            command
         }
     }
 
@@ -26,6 +28,8 @@ impl UnixConn {
                 self.unregister(registry);
             } else {
                 self.message = String::from_utf8_lossy(&buffer[..nbytes]).to_string();
+                let response = self.command.receive(self.message.clone());
+                self.socket.write_all(serde_json::to_string(&response).unwrap().as_bytes()).expect(format!("failed to write {response:?}").as_str());
             }
         }
         if ev.is_writable() {
@@ -56,7 +60,7 @@ impl UnixConn {
         if task.is_ok() {
             task.unwrap();
         } else {
-            error!("{}. socket dropped",task.err().unwrap());
+            warn!("{}. socket dropped",task.err().unwrap());
         }
     }
 
@@ -66,7 +70,7 @@ impl UnixConn {
         if task.is_ok() {
             task.unwrap();
         } else {
-            error!("{}. socket dropped",task.err().unwrap());
+            warn!("{}. socket dropped",task.err().unwrap());
         }
     }
 

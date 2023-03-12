@@ -1,12 +1,10 @@
 use std::sync::Arc;
 use anyhow::{Result,Error};
-use log::error;
 use rocksdb::DB;
-use serde_json::Value;
 use shared::{MOEDB_INF, MOEDB_STORE_INF};
 use shared::toml_schema::read_sys_cfg;
 use crate::common::{check_if_cf_exists, get_cfs, get_rocksdb_cfg};
-use crate::header::{CfData, CfDataArray, CfWithInfo, Disk, MoDb};
+use crate::header::{CfWithInfo, Disk, MoDb};
 
 impl MoDb<Disk> for Disk {
     fn new() -> Result<Disk,Error> {
@@ -55,25 +53,5 @@ impl MoDb<Disk> for Disk {
 
     fn exists_db(&self, name: &str) -> bool {
         check_if_cf_exists(name)
-    }
-
-    fn upsert(data: CfData) -> bool {
-        todo!()
-    }
-
-    fn upsert_bulk(data_arr: CfDataArray) -> bool {
-        todo!()
-    }
-
-    fn delete(data: CfData) -> bool {
-        todo!()
-    }
-
-    fn delete_bulk(data_arr: CfDataArray) -> bool {
-        todo!()
-    }
-
-    fn get(query: String) -> Vec<Value> {
-        todo!()
     }
 }

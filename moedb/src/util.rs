@@ -1,4 +1,3 @@
-use crate::header::{CfData, CfWithInfo};
 use serde_json::{from_str, Value};
 
 fn is_json(input_string: &str, key: Vec<String>) -> bool {

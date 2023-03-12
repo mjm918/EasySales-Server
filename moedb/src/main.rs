@@ -1,62 +1,23 @@
 use std::{fs, path};
 use std::fs::File;
-use std::time::Instant;
-use log::{debug, error, LevelFilter};
-use serde_json::{from_str, Value};
+use log::{error, LevelFilter};
 use simplelog::{ColorChoice, CombinedLogger, Config, TerminalMode, TermLogger, WriteLogger};
 
 use shared::{DB_PATH, DB_SOCKET_PATH, LOG_DIR_APP, LOG_FILE_APP};
 use shared::toml_schema::read_sys_cfg;
-use crate::header::UnixSock;
+use crate::header::{Command, UnixSock};
 
 mod header;
 mod disk;
 mod memory;
 mod common;
-mod manipulator;
-mod schema;
+mod util;
+mod schema_store;
 mod uerr;
 mod unix_conn;
 mod unix_sock;
 mod statement;
-
-/*use tokio::net::UnixListener;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use std::path::Path;
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let socket_path = Path::new(DB_SOCKET_PATH);
-    let listener = UnixListener::bind(socket_path)?;
-
-    println!("Listening for connections on {:?}", socket_path);
-
-    loop {
-        let (mut stream, _) = listener.accept().await?;
-
-        tokio::spawn(async move {
-            let mut buffer = [0; 1024];
-
-            loop {
-                match stream.read(&mut buffer).await {
-                    Ok(0) => break,
-                    Ok(n) => {
-                        println!("Read {} bytes", n);
-
-                        // Process the received data here...
-                        let response = b"OK";
-                        stream.write_all(response).await.unwrap();
-                    },
-                    Err(e) => {
-                        eprintln!("Error reading from socket; error = {:?}", e);
-                        break;
-                    }
-                }
-            }
-        });
-    }
-}*/
-
+mod command;
 
 #[tokio::main]
 async fn main() {
@@ -90,9 +51,10 @@ async fn main() {
             WriteLogger::new(LevelFilter::Warn, Config::default(), File::create(path_log.as_str()).unwrap()),
         ]
     ).unwrap();
-    std::fs::remove_file(DB_SOCKET_PATH).unwrap();
+    fs::remove_file(DB_SOCKET_PATH).unwrap();
     tokio::spawn(async move {
-        let mut unix_sock = UnixSock::new(DB_SOCKET_PATH);
+        let command = Command::new().unwrap();
+        let unix_sock = UnixSock::new(DB_SOCKET_PATH, command);
         unix_sock.await.unwrap().start();
     }).await.expect("failed to start unix socket");
 }
